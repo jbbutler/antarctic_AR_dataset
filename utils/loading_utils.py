@@ -41,6 +41,10 @@ def load_ais(points=False):
 
         return ais_pts
 
+    # avoid any issues with -0 not matching 0
+    ais_mask = ais_mask.assign_coords(lat=ais_mask.lat.round(5), 
+                                  lon=ais_mask.lon.round(5))
+
     return ais_mask
 
 def load_cell_areas():
@@ -57,6 +61,10 @@ def load_cell_areas():
     areas_path = home_dir/'data/area/MERRA2_gridarea.nc'
     cell_areas = xr.open_dataset(areas_path)
     cell_areas = cell_areas.cell_area
+
+    # avoid any issues with -0 not matching 0
+    cell_areas = cell_areas.assign_coords(lat=cell_areas.lat.round(5), 
+                                      lon=cell_areas.lon.round(5))
 
     return cell_areas
 
