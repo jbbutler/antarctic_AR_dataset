@@ -12,11 +12,10 @@ dependencies:
   - matplotlib
   - xarray
   - netcdf4
+  - h5netcdf
   - h5py
   - pytables
   - pip:
     - ray
     - earthaccess
     - tqdm
-    - jupyterlab_myst
-    - gh-scoped-creds
