@@ -1,0 +1,24 @@
+name: antarctic_ars_dataset
+channels:
+  - conda-forge
+dependencies:
+  # Core
+  - python=3.12
+  - jupyterlab
+  - ipywidgets
+  - pip
+  - mystmd
+  # Data Science Stack
+  - numpy
+  - pandas
+  - matplotlib
+  # Geospatial & Data Formats
+  - xarray
+  - netcdf4
+  - h5py
+  - pytables
+  # Pip-only packages (and packages with Conda issues)
+  - pip:
+    - ray
+    - earthaccess
+    - tqdm
