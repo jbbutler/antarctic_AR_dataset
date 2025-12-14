@@ -2,8 +2,8 @@
 
 Welcome! This repo contains a tutorial notebook showcasing a fully cloud-based workflow for extracting landfalling characteristics and impacts from a catalog of atmospheric river storms in Antarctica, as mentioned in the following AGU25 talks:
 
-+ [A12D-01 Linking Antarctic Atmospheric River Characteristics with Their Landfalling Impacts](https://agu.confex.com/agu/agu25/meetingapp.cgi/Paper/1970828), [slides]()
-+ [IN23A-06 Cloud-based Workflows for Antarctic Atmospheric Rivers: Successes and Challenges](https://agu.confex.com/agu/agu25/meetingapp.cgi/Paper/1971552), [slides]()
++ [A12D-01 Linking Antarctic Atmospheric River Characteristics with Their Landfalling Impacts](https://agu.confex.com/agu/agu25/meetingapp.cgi/Paper/1970828), [slides](https://zenodo.org/records/17926794)
++ [IN23A-06 Cloud-based Workflows for Antarctic Atmospheric Rivers: Successes and Challenges](https://agu.confex.com/agu/agu25/meetingapp.cgi/Paper/1971552), [slides](https://zenodo.org/records/17926811)
 
 ## Background
 
