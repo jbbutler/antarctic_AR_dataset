@@ -21,8 +21,9 @@ We implemented this workflow on [CryoCloud](https://cryointhecloud.com/), a clou
 
 If you need to create an account, doing to is very easy! See [here](https://book.cryointhecloud.com/getting-started).
 
-Once you have an account and log in, 
+Once you have an account and log in, follow these steps to start up a server you can use to run through the workflow!
 
+<img width="1065" height="864" alt="cryo_walkthrough" src="https://github.com/user-attachments/assets/c771d5ea-e811-49f9-9722-42f8d2482489" />
 
 ## Repo Contents
 + `environment.yml`: file specifying environment to run this workflow in
