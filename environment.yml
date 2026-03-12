@@ -22,9 +22,8 @@ dependencies:
   - dask
   - pip:
     - ray
-    - earthaccess
+    - earthaccess==0.16.0
     - tqdm
     - jupyterlab_myst
     - jupyter-keepalive
-    - jupyter_scheduler==2.10.0
     - -e . # used to install the editable version of artools while in development
