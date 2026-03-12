@@ -78,7 +78,7 @@ def load_catalog(fname):
     '''
 
     file_path = hf_hub_download(
-        repo_id='butlerj/antarctic_AR_catalogs',
+        repo_id='butlerjorg/antarctic_AR_catalogs',
         filename=fname,
         repo_type='dataset')
 

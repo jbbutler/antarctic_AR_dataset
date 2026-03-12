@@ -20,7 +20,6 @@ import ray
 import requests
 import json
 
-@ray.remote
 def compute_summaries(storm_da, func_vars_dict, cell_areas, data_doi, gatekeeper=None, half_hour=False, climatology_ds=None):
     '''
     Compute AR quantities on a particular AR (raw meaning no climatology subtracted out).
@@ -74,33 +73,35 @@ def compute_summaries(storm_da, func_vars_dict, cell_areas, data_doi, gatekeeper
     # lazily load the dataset
     obs_ds = xr.open_mfdataset(granule_pointers)
 
-    if half_hour:
-        obs_ds = obs_ds.assign_coords(lat=obs_ds.lat.round(5), lon=obs_ds.lon.round(5), time=obs_ds.time - np.timedelta64(30, 'm'))
-    else:
-        obs_ds = obs_ds.assign_coords(lat=obs_ds.lat.round(5), lon=obs_ds.lon.round(5))
-
-    # for every AR summary quantity, grab the right DataArray and compute the quantity
-    summaries = []
-    for var_name, quantity_dict in func_vars_dict.items():
-        single_var_da = obs_ds[var_name]
-        # subset in advance, and compute
-        single_var_da = single_var_da.sel(lat=storm_da.lat, lon=storm_da.lon, time=storm_da.time)
-        single_var_da = single_var_da.compute()
-
-        for quantity, func in quantity_dict.items():
-            # if we are computing an anomaly, access the climatology_ds
-            if 'anomaly' in quantity:
-                climatology = climatology_ds[var_name]
-                var_anomaly = single_var_da.groupby('time.month') - climatology
-                var_anomaly = var_anomaly.drop_vars('month')
-                summaries.append(func(storm_da, var_anomaly, cell_areas))
-            else:
-                summaries.append(func(storm_da, single_var_da, cell_areas))
+    with xr.open_mfdataset(granule_pointers) as obs_ds:
+    
+        if half_hour:
+            obs_ds = obs_ds.assign_coords(lat=obs_ds.lat.round(5), lon=obs_ds.lon.round(5), time=obs_ds.time - np.timedelta64(30, 'm'))
+        else:
+            obs_ds = obs_ds.assign_coords(lat=obs_ds.lat.round(5), lon=obs_ds.lon.round(5))
+    
+        # for every AR summary quantity, grab the right DataArray and compute the quantity
+        summaries = []
+        for var_name, quantity_dict in func_vars_dict.items():
+            single_var_da = obs_ds[var_name]
+            # subset in advance, and compute
+            single_var_da = single_var_da.sel(lat=storm_da.lat, lon=storm_da.lon, time=storm_da.time)
+            single_var_da = single_var_da.compute()
+    
+            for quantity, func in quantity_dict.items():
+                # if we are computing an anomaly, access the climatology_ds
+                if 'anomaly' in quantity:
+                    climatology = climatology_ds[var_name]
+                    var_anomaly = single_var_da.groupby('time.month') - climatology
+                    var_anomaly = var_anomaly.drop_vars('month')
+                    summaries.append(func(storm_da, var_anomaly, cell_areas))
+                else:
+                    summaries.append(func(storm_da, single_var_da, cell_areas))
 
     return summaries, missing_days
     
 @ray.remote
-def compute_chunk_summaries(chunk_lst, func_vars_dict, cell_areas, data_doi, gatekeeper=None, half_hour=False, climatology_ds=False):
+def compute_chunk_summaries(chunk_lst, func_vars_dict, cell_areas, data_doi, gatekeeper=None, half_hour=False, climatology_ds=None):
     '''
     Computes summaries for a list of ARs (called a chunk_lst), and loops through the chunk in sequential fashion. Provides an alternative
         way of parallelizing the storm value computations: instead of parallelizing over the list of individual storms, we parallelize over
@@ -135,11 +136,9 @@ def compute_chunk_summaries(chunk_lst, func_vars_dict, cell_areas, data_doi, gat
                                       half_hour, 
                                       climatology_ds)
         summaries_lst.append(summaries)
-        missing_lst.append(missing_days)
 
-    return summaries_lst, missing_lst
+    return summaries_lst
 
-@ray.remote
 def compute_precip_summaries(storm_da, cell_areas, agg_func, data_doi, gatekeeper=None):
     '''
     Function that computes summaries for precipitation variables. Precipitation requires
