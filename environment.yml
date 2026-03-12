@@ -25,4 +25,5 @@ dependencies:
     - earthaccess
     - tqdm
     - jupyterlab_myst
+    - jupyter_scheduler
     - -e . # used to install the editable version of artools while in development
