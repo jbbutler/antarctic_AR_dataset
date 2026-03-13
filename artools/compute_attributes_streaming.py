@@ -70,9 +70,6 @@ def compute_summaries(storm_da, func_vars_dict, cell_areas, data_doi, gatekeeper
     storm_da = storm_da.assign_coords(lat=storm_da.lat.round(5), lon=storm_da.lon.round(5))
     #granule_pointers = grab_MERRA2_granules(storm_da, data_doi)
 
-    # lazily load the dataset
-    obs_ds = xr.open_mfdataset(granule_pointers)
-
     with xr.open_mfdataset(granule_pointers) as obs_ds:
     
         if half_hour:
@@ -184,18 +181,20 @@ def compute_precip_summaries(storm_da, cell_areas, agg_func, data_doi, gatekeepe
     
     var_lst = ['PRECLS', 'PRECCU', 'PRECSN']
 
-    obs_ds = xr.open_mfdataset(granule_pointers)
-    obs_ds = obs_ds.assign_coords(time=obs_ds.time - np.timedelta64(30, 'm'))
-    # get cumulative snowfall for each 3 hour block
-    obs_ds = (obs_ds[var_lst]*60*60).resample(time='3h').sum()
-    obs_ds = obs_ds.assign_coords(lat=obs_ds.lat.round(5), lon=obs_ds.lon.round(5))
-    
-    summaries = []
-    # compute aggregate rainfall
-    obs_ds['tot_rainfall'] = obs_ds['PRECCU'] + obs_ds['PRECLS']
-    summaries.append(agg_func(augmented_da, obs_ds['tot_rainfall'], cell_areas))
-    # compute aggregate snowfall
-    summaries.append(agg_func(augmented_da, obs_ds['PRECSN'], cell_areas))
+    with xr.open_mfdataset(granule_pointers) as ds_opened:
+        ds = ds_opened.assign_coords(time=ds_opened.time - np.timedelta64(30, 'm'))
+        
+        # get cumulative snowfall for each 3 hour block
+        ds_resampled = (ds[var_lst]*60*60).resample(time='3h').sum()
+        ds_resampled = ds_resampled.assign_coords(lat=ds_resampled.lat.round(5), lon=ds_resampled.lon.round(5))
+        
+        summaries = []
+        # compute aggregate rainfall
+        tot_rainfall = ds_resampled['PRECCU'] + ds_resampled['PRECLS']
+        summaries.append(agg_func(augmented_da, tot_rainfall, cell_areas))
+        
+        # compute aggregate snowfall
+        summaries.append(agg_func(augmented_da, ds_resampled['PRECSN'], cell_areas))
     
     return summaries, missing_days
 

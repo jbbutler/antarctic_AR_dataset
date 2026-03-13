@@ -10,6 +10,9 @@ __pycache__/
 *.err
 *.out
 
+# log files
+*.log
+
 # Distribution / packaging
 .Python
 build/
@@ -37,13 +40,14 @@ MANIFEST
 *.spec
 
 # ignore all output created
-output/data_products/
 
 # ignore large catalog files as well
-catalogs/
+catalogs
 
 # ignore the input_data
 input_data
+
+# ignore 
 
 # Installer logs
 pip-log.txt
