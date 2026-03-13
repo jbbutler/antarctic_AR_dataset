@@ -41,34 +41,10 @@ def compute_summaries(storm_da, func_vars_dict, cell_areas, data_doi, gatekeeper
         summaries (list): a list of the summary quantities, in the order as they appear in func_vars_dict
     '''
     granule_lst = grab_MERRA2_granules(storm_da, data_doi)
-        
-
-    # handle unstreamable days (as of 11/30, misc. days were dropped from at least one MERRA-2 dataset)
-    storm_days = np.unique(storm_da.time.dt.strftime("%Y%m%d"))
-    if len(granule_lst) == len(storm_days):
-        missing_days = []
-    else:
-        granule_days = []
-        for granule in granule_lst:
-            granule_days.append(granule.data_links()[0].split('.')[-2])
-        granule_days = np.array(granule_days)
-        # find missing granule days
-        missing_days = np.setdiff1d(storm_days, granule_days)
-
-        if len(granule_lst) == 0:
-            # count the number of columns
-            labels = [key for quantity_dict in func_vars_dict.values() for key in quantity_dict.keys()]
-            
-            return [np.nan]*len(labels), missing_days
-        
-        # exclude those missing days from the storm dataarray mask
-        storm_da = storm_da.sel(time=~storm_da.time.dt.strftime("%Y%m%d").isin(missing_days))
-    
     granule_pointers = ray.get(gatekeeper.get_granule_pointers.remote(granule_lst))
 
     # avoid any issues with -0 not matching 0
     storm_da = storm_da.assign_coords(lat=storm_da.lat.round(5), lon=storm_da.lon.round(5))
-    #granule_pointers = grab_MERRA2_granules(storm_da, data_doi)
 
     with xr.open_mfdataset(granule_pointers) as obs_ds:
     
@@ -95,7 +71,7 @@ def compute_summaries(storm_da, func_vars_dict, cell_areas, data_doi, gatekeeper
                 else:
                     summaries.append(func(storm_da, single_var_da, cell_areas))
 
-    return summaries, missing_days
+    return summaries
     
 @ray.remote
 def compute_chunk_summaries(chunk_lst, func_vars_dict, cell_areas, data_doi, gatekeeper=None, half_hour=False, climatology_ds=None):
@@ -123,9 +99,8 @@ def compute_chunk_summaries(chunk_lst, func_vars_dict, cell_areas, data_doi, gat
     '''
 
     summaries_lst = []
-    missing_lst = []
     for index, storm in chunk_lst.iterrows():
-        summaries, missing_days = compute_summaries(storm.data_array, 
+        summaries = compute_summaries(storm.data_array, 
                                       func_vars_dict, 
                                       cell_areas, 
                                       data_doi, 
@@ -158,25 +133,6 @@ def compute_precip_summaries(storm_da, cell_areas, agg_func, data_doi, gatekeepe
     augmented_da = augment_storm_da(storm_da)
     
     granule_lst = grab_MERRA2_granules(augmented_da, data_doi)
-
-    # handle unstreamable days (as of 11/30, misc. days were dropped from at least one MERRA-2 dataset)
-    augmented_days = np.unique(augmented_da.time.dt.strftime("%Y%m%d"))
-    if len(granule_lst) == len(augmented_days):
-        missing_days = []
-    else:
-        granule_days = []
-        for granule in granule_lst:
-            granule_days.append(granule.data_links()[0].split('.')[-2])
-        granule_days = np.array(granule_days)
-        # find missing granule days
-        missing_days = np.setdiff1d(augmented_days, granule_days)
-        # exclude those missing days from the storm dataarray mask
-
-        if len(granule_lst) == 0:
-            return [np.nan]*2, missing_days
-        
-        augmented_da = augmented_da.sel(time=~augmented_da.time.dt.strftime("%Y%m%d").isin(missing_days))
-    
     granule_pointers = ray.get(gatekeeper.get_granule_pointers.remote(granule_lst))
     
     var_lst = ['PRECLS', 'PRECCU', 'PRECSN']
@@ -196,7 +152,7 @@ def compute_precip_summaries(storm_da, cell_areas, agg_func, data_doi, gatekeepe
         # compute aggregate snowfall
         summaries.append(agg_func(augmented_da, ds_resampled['PRECSN'], cell_areas))
     
-    return summaries, missing_days
+    return summaries
 
 @ray.remote
 def compute_precip_chunk_summaries(chunk_lst, cell_areas, agg_func, data_doi, gatekeeper=None):
@@ -216,17 +172,15 @@ def compute_precip_chunk_summaries(chunk_lst, cell_areas, agg_func, data_doi, ga
     '''
 
     summaries_lst = []
-    missing_lst = []
     for index, storm in chunk_lst.iterrows():
-        summaries, missing_days = compute_precip_summaries(storm.data_array, 
+        summaries = compute_precip_summaries(storm.data_array, 
                                              cell_areas, 
                                              agg_func, 
                                              data_doi, 
                                              gatekeeper)
         summaries_lst.append(summaries)
-        missing_lst.append(missing_days)
 
-    return summaries_lst, missing_lst
+    return summaries_lst
         
     
     
