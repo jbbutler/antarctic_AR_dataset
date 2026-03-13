@@ -40,6 +40,7 @@ MANIFEST
 *.spec
 
 # ignore all output created
+output
 
 # ignore large catalog files as well
 catalogs
