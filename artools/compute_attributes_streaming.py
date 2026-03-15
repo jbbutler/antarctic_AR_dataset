@@ -73,7 +73,7 @@ def compute_summaries(storm_da, func_vars_dict, cell_areas, data_doi, gatekeeper
 
     return summaries
     
-@ray.remote
+@ray.remote(max_calls=1)
 def compute_chunk_summaries(chunk_lst, func_vars_dict, cell_areas, data_doi, gatekeeper=None, half_hour=False, climatology_ds=None):
     '''
     Computes summaries for a list of ARs (called a chunk_lst), and loops through the chunk in sequential fashion. Provides an alternative
@@ -154,7 +154,7 @@ def compute_precip_summaries(storm_da, cell_areas, agg_func, data_doi, gatekeepe
     
     return summaries
 
-@ray.remote
+@ray.remote(max_calls=1)
 def compute_precip_chunk_summaries(chunk_lst, cell_areas, agg_func, data_doi, gatekeeper=None):
     '''
     The analogous function to compute_chunk_summaries(), but for the precip computations.
