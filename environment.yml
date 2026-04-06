@@ -3,27 +3,26 @@ channels:
   - conda-forge
 dependencies:
   - python=3.12
-  - jupyterlab
-  - ipywidgets
+  - jupyterlab=4.3.*
+  - ipywidgets=8.1.*
   - pip
   - mystmd
   - ffmpeg
-  - numpy
-  - cartopy
-  - pandas
-  - matplotlib
-  - seaborn
-  - xarray
-  - netcdf4
-  - huggingface_hub
-  - h5netcdf
-  - h5py
-  - pytables
-  - dask
+  - numpy=2.4.*
+  - cartopy=0.25.*
+  - pandas=3.0.*
+  - matplotlib=3.10.*
+  - seaborn=0.13.*
+  - xarray=2026.2.*
+  - huggingface_hub=1.9.*
+  - h5netcdf=1.8.*
+  - h5py=3.16.*
+  - pytables=3.11.*
+  - dask=2026.3.*
   - pip:
-    - ray
+    - ray==2.54.*
     - earthaccess==0.16.0
     - tqdm
-    - jupyterlab_myst
-    - jupyter-keepalive
+    - jupyterlab_myst==2.6.*
+    - jupyter-keepalive==0.3.*
     - -e . # used to install the editable version of artools while in development

@@ -17,20 +17,27 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "numpy",
-    "pandas",
-    "scikit-learn",
+    "numpy==2.4.*",
+    "pandas==3.0.*",
+    "scikit-learn==1.8.*",
+    "xarray==2026.2.*",
+    "ray==2.54.*",
+    "requests==2.32.*",
+    "matplotlib==3.10.*",
+    "earthaccess==0.16.*",
     "tqdm",
-    "xarray",
-    "ray",
-    "requests",
-    "matplotlib",
-    "earthaccess",
+    "cartopy==0.25.*",
+    "huggingface_hub==1.9.*",
+    "netcdf4",
+    "dask==2026.3.*",
+    "tables==3.11.*",
+    "h5netcdf==1.8.*",
+    "h5py==3.16.*"
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/yourusername/my_package_name"
-"Bug Tracker" = "https://github.com/yourusername/my_package_name/issues"
+"Homepage" = "https://github.com/jbbutler/antarctic_AR_dataset"
+"Bug Tracker" = "https://github.com/jbbutler/antarctic_AR_dataset/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]
