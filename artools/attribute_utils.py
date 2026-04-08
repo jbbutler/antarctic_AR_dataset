@@ -298,6 +298,10 @@ def compute_max_SLPgrad(storm_da, var_da, area_da, ais_da):
     lon_partials = rads.differentiate('lon')/(np.sin(rads.lat)*r)
     
     magnitude = np.sqrt(lon_partials**2 + lat_partials**2)
+    # reassign coordinates to be degrees instead of radians to create mask
+    magnitude = magnitude.assign_coords(lon=storm_da_ocean_landfall.lon, 
+                                    lat=storm_da_ocean_landfall.lat)
+    
     magnitude_masked = magnitude.where(storm_da_ocean_landfall == 1)
     max_grad = float(magnitude_masked.max())
 
