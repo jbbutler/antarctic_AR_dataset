@@ -290,7 +290,7 @@ def compute_max_SLPgrad(storm_da, var_da, area_da, ais_da):
     storm_da_ocean_landfall = storm_da_ocean.sel(time=first_landfall)
 
     if (storm_da_ocean_landfall == 0).all().values:
-        return -1
+        return np.nan
         
     rads = var_da_subset_landfall.assign_coords(lon=np.radians(var_da_subset_landfall.lon), lat=np.radians(var_da_subset_landfall.lat))
     r = 6378 
@@ -364,7 +364,7 @@ def compute_max_landfalling_wind(storm_da, var_da, area_da, ais_da):
 
     storm_da_ocean_landfall = storm_da_ocean.sel(time=first_landfall)
     if (storm_da_ocean_landfall == 0).all().values:
-        return -1
+        return np.nan
     
     var_da_subset_masked = var_da_subset.where(storm_da_ocean == 1)
     first_day_masked = var_da_subset_masked.sel(time=first_landfall)
@@ -387,7 +387,7 @@ def compute_avg_landfalling_wind(storm_da, var_da, area_da, ais_da):
 
     storm_da_ocean_landfall = storm_da_ocean.sel(time=first_landfall)
     if (storm_da_ocean_landfall == 0).all().values:
-        return -1
+        return np.nan
 
     var_da_subset = var_da.sel(lat=storm_da.lat, lon=storm_da.lon)
     notnull = var_da_subset.notnull()
