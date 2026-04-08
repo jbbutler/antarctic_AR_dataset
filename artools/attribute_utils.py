@@ -244,7 +244,9 @@ def compute_max_intensity(storm_da, var_da, area_da, ais_da=None):
         storm_da_subset = storm_da.copy() 
         
     var_da_subset = var_da.sel(lat=storm_da_subset.lat, lon=storm_da_subset.lon)
-    max_intensity_val = float((storm_da_subset*var_da_subset).max())
+    
+    var_da_subset_masked = var_da_subset.where(storm_da_subset == 1)
+    max_intensity_val = float(var_da_subset_masked.max())
 
     return max_intensity_val
 
@@ -263,8 +265,9 @@ def compute_min_SLP(storm_da, var_da, area_da, ais_da):
     var_da_subset = var_da.sel(lat=storm_da.lat, lon=storm_da.lon)
     first_landfall = np.min(storm_da.time[storm_da_ais.any(dim=['lat', 'lon'])].values)
     
-    first_day = (storm_da_ocean*var_da_subset).sel(time=first_landfall).values
-    min_slp = np.min(first_day[first_day > 0], initial=99999999) 
+    var_da_subset_masked = var_da_subset.where(storm_da_ocean == 1)
+    first_day_masked = var_da_subset_masked.sel(time=first_landfall)
+    min_slp = float(first_day_masked.min())
 
     return min_slp
 
@@ -295,9 +298,10 @@ def compute_max_SLPgrad(storm_da, var_da, area_da, ais_da):
     lon_partials = rads.differentiate('lon')/(np.sin(rads.lat)*r)
     
     magnitude = np.sqrt(lon_partials**2 + lat_partials**2)
-    max_grad = np.max(magnitude.values*storm_da_ocean_landfall.values)
+    magnitude_masked = magnitude.where(storm_da_ocean_landfall == 1)
+    max_grad = float(magnitude_masked.max())
 
-    return float(max_grad)
+    return max_grad
 
 
 def compute_avg_landfalling_minomega(storm_da, var_da, area_da, ais_da):
@@ -337,7 +341,9 @@ def compute_max_elevation_grad(storm_da, var_da):
     lon_partials = rads.differentiate('lon')/(np.sin(rads.lat)*r)
     
     magnitude = np.sqrt(lon_partials**2 + lat_partials**2)
-    max_grad = np.max(magnitude.values*storm_aligned.values)
+    
+    magnitude_masked = magnitude.where(storm_aligned == 1)
+    max_grad = float(magnitude_masked.max())
 
     return max_grad
 
@@ -360,8 +366,9 @@ def compute_max_landfalling_wind(storm_da, var_da, area_da, ais_da):
     if (storm_da_ocean_landfall == 0).all().values:
         return -1
     
-    first_day = (storm_da_ocean*var_da_subset).sel(time=first_landfall).values
-    max_wind = np.nanmax(first_day, initial=-999999)
+    var_da_subset_masked = var_da_subset.where(storm_da_ocean == 1)
+    first_day_masked = var_da_subset_masked.sel(time=first_landfall)
+    max_wind = float(first_day_masked.max())
 
     return max_wind
 
@@ -431,6 +438,6 @@ def augment_storm_da(storm_da):
     unincluded_da = xr.DataArray(unincluded_array, coords=unincluded_coords)
     
     augmented_da = xr.concat([storm_da, unincluded_da], dim='time')
-    augmented_da = augmented_da.rolling(time=8, min_periods=1).max()
+    augmented_da = augmented_da.sortby('time').rolling(time=9, min_periods=1).max()
     
     return augmented_da
