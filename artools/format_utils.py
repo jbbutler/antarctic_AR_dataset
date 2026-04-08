@@ -17,8 +17,7 @@ def relabel_storms(catalog, date_colname):
         algorithm output, which by default is just the (n-1)th storm identified from 1/1980.
 
     Inputs:
-        catalog (pandas.DataFrame): contains a column called 'data_array' with binary dataarrays of each storm,
-            and a column with the start date of that storm (in pd.Datetime format)
+        catalog (pandas.DataFrame): contains a column with the start date of that storm (in pd.Datetime format)
         date_colname (str): the name of the column with the start date of each storm
 
     Outputs:
@@ -27,15 +26,18 @@ def relabel_storms(catalog, date_colname):
 
     # preprocess labels
     labels_lst = []
-    for year in landfalling_storms.start_date.dt.year.unique():
+    for year in catalog[date_colname].dt.year.unique():
     
-        n_storms = (landfalling_storms.start_date.dt.year == year).sum()
+        n_storms = (catalog[date_colname].dt.year == year).sum()
         year_labels = f'{year}_' + (np.arange(0, n_storms) + 1).astype(str)
         
         labels_lst = labels_lst + list(year_labels)
-    
-    landfalling_storms.index = labels_lst
-    landfalling_storms.index.name = 'Label'
+
+    relabelled_catalog = catalog.copy()
+    relabelled_catalog.index = labels_lst
+    relabelled_catalog.index.name = 'Label'
+
+    return relabelled_catalog
 
 def to_stormtime_format(catalog, show_progress=False):
     '''
