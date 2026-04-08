@@ -19,6 +19,7 @@ dependencies:
   - h5py=3.16.*
   - pytables=3.11.*
   - dask=2026.3.*
+  - pytest
   - pip:
     - ray==2.54.*
     - earthaccess==0.16.0
