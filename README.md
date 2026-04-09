@@ -1,4 +1,4 @@
-[![Tests](https://github.com/jbbutler/antarctic_AR_dataset/actions/workflows/tests.yml/badge.svg)](https://github.com/jbbutler/antarctic_AR_dataset/actions/workflows/tests.yml)
+[![Tests](https://github.com/jbbutler/antarctic_AR_dataset/actions/workflows/tests.yml/badge.svg)](https://github.com/jbbutler/antarctic_AR_dataset/actions/workflows/test.yml)
 
 # Constructing Datasets of Antarctic Atmopsheric River Events: A New Catalog and Software Workflows
 
