@@ -1,3 +1,5 @@
+[![test artools](https://github.com/jbbutler/antarctic_AR_dataset/actions/workflows/test.yml/badge.svg)](https://github.com/jbbutler/antarctic_AR_dataset/actions/workflows/test.yml)
+
 # Constructing Datasets of Antarctic Atmopsheric River Events: A New Catalog and Software Workflows
 
 Welcome! This repository contains all of the source code, routines, notebooks used in the paper **insert paper here when complete**. To learn more about this work, feel free to check out the paper, or take a look at [the project website](https://jbbutler.github.io/antarctic_AR_dataset/), which contains a set of web-rendered notebooks that narrate the project with code and output.
