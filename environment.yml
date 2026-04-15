@@ -22,7 +22,7 @@ dependencies:
   - pytest
   - pip:
     - ray==2.54.*
-    - earthaccess==0.16.0
+    - earthaccess==0.17.0
     - tqdm
     - jupyterlab_myst==2.6.*
     - jupyter-keepalive==0.3.*
