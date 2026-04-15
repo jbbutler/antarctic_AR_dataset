@@ -18,13 +18,13 @@ classifiers = [
 ]
 dependencies = [
     "numpy==2.4.*",
-    "pandas==3.0.*",
+    "pandas<3.0",
     "scikit-learn==1.8.*",
     "xarray==2026.2.*",
     "ray==2.54.*",
     "requests==2.32.*",
     "matplotlib==3.10.*",
-    "earthaccess==0.16.*",
+    "earthaccess>=0.16",
     "tqdm",
     "cartopy==0.25.*",
     "huggingface_hub==1.9.*",
