@@ -40,7 +40,7 @@ If you would like to run our clustering algorithm for your own gridded threshold
 
 If you would like to run the dataset streaming workflow, or reproduce the output of any of our notebooks, you should simply be able to run the notebooks. Since hte workflows in these notebooks are very lightweight, we recommend you use [CryoCloud](https://cryointhecloud.com/), a cloud-hosted JupyterHub whose mission is to facilitate open, collaborative, and reproducible science. If you need to create an account, doing to is very easy! See [here](https://book.cryointhecloud.com/getting-started).
 
-Once you have an account and log in, follow these steps to start up a server you can use to run through the workflow!
+Once you have an account and log in, you can spin up a CPU server. Select 'Build your own image' in the 'Environment' dropdown, enter the repository which has the `environmeny.yml` (either this one or your own clone), click 'Build image', and wait until it's built! Finally, choose your server size and then click 'Start'. You're ready to run!
 
 
 
