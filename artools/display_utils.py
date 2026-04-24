@@ -19,7 +19,7 @@ import base64
 
 def construct_thumbnail(storm):
     '''
-    Make a thumbnail image for a particular AR stor.
+    Make a thumbnail image for a particular AR storm.
 
     Inputs:
         storm (xarray.DataArray): a binary-valued dataarray indicating pixels associated with this storm
@@ -46,23 +46,60 @@ def construct_thumbnail(storm):
     return imgstr
 
 
-def display_catalog(catalog_df, nrows=None):
+import matplotlib.pyplot as plt
+from io import BytesIO
+import base64
+import pandas as pd
+
+def construct_trajectory_thumbnail(traj_df):
     '''
-    Render the catalog as a standard pd.DataFrame, but show the data_array column as a column of thumbnails.
-        By default, pandas seeks to render a string representation of each DataFrame. This prevents this messy
-        output from being shown. Acts like df.head(nrows) in pandas.
+    Make a thumbnail image for a storm's trajectory.
 
     Inputs:
-        catalog_df (pd.DataFrame): the catalog
-        nrows (int): the number of rows you wish to show. If None, display the whole catalog.
+        traj_df (pd.DataFrame or None): dataframe with 'lat', 'lon', and 'time' columns
 
     Outputs:
-        A display of the catalog.
+        imgstr (string): an html image tag for the trajectory thumbnail
     '''
-    if nrows:
-        return catalog_df.head(nrows).style.format({'data_array': lambda x: construct_thumbnail(x)}).format_index(precision=0)
-    else:
-        return catalog_df.style.format({'data_array': construct_thumbnail}).format_index(precision=0)
+
+    fig, ax = plt.subplots(1)
+    
+    # plot longitude on the x-axis and latitude on the y-axis
+    ax.plot(traj_df['avg_lon'], traj_df['avg_lat'], color='black', linewidth=2)
+    ax.plot(traj_df['avg_lon'].iloc[0], traj_df['avg_lat'].iloc[0], marker='o', color='red', markersize=4)
+    ax.plot(traj_df['avg_lon'].iloc[-1], traj_df['avg_lat'].iloc[-1], marker='o', color='red', markersize=4)
+
+    ax.axis('off')
+    fig.set_size_inches((0.5, 0.5))
+    plt.close()
+
+    # Convert to base64 html string
+    figfile = BytesIO()
+    fig.savefig(figfile, format='png', pad_inches=0, bbox_inches='tight')
+    figfile.seek(0)
+    figdata_png = base64.b64encode(figfile.getvalue()).decode()
+    imgstr = '<img src="data:image/png;base64,{}" />'.format(figdata_png)
+
+    return imgstr
+
+
+def display_catalog(catalog_df, nrows=None):
+    '''
+    Render the catalog as a standard pd.DataFrame, but show the data_array 
+    and trajectory columns as thumbnails.
+    '''
+    # create a dictionary of formatters
+    formatters = {'data_array': construct_thumbnail}
+    
+    # add trajectory formatter if the column exists
+    if 'trajectory' in catalog_df.columns:
+        formatters['trajectory'] = construct_trajectory_thumbnail
+
+    # filter by rows if specified
+    df_to_display = catalog_df.head(nrows) if nrows else catalog_df
+
+    # apply the formatters dictionary
+    return df_to_display.style.format(formatters).format_index(precision=0)
 
 
 def format_polar_axis(ax):
