@@ -20,6 +20,8 @@ project:
         - file: notebooks/quality_assurance/qa_flickering_investigations.ipynb
         - file: notebooks/quality_assurance/qa_sensitivity_testing.ipynb
         - file: notebooks/quality_assurance/cmmt_comparison.ipynb
+  bibliography:
+    - references.bib
     
 site:
   template: book-theme
