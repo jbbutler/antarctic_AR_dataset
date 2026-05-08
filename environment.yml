@@ -26,4 +26,3 @@ dependencies:
     - tqdm
     - jupyterlab_myst==2.6.*
     - jupyter-keepalive==0.3.*
-    - -e . # used to install the editable version of artools while in development
