@@ -4,12 +4,10 @@ channels:
 dependencies:
   - python=3.12
   - pip
-  - mystmd
   - ffmpeg
   - ipykernel
   - ipython
   - numpy=2.4.*
-  - cartopy=0.25.*
   - pandas=3.0.*
   - matplotlib=3.10.*
   - seaborn=0.13.*
@@ -18,11 +16,13 @@ dependencies:
   - h5netcdf=1.8.*
   - h5py=3.16.*
   - pytables=3.11.*
-  - dask=2026.3.*
   - pytest
   - pip:
+    - dask==2026.3.*
     - ray==2.54.*
+    - cartopy==0.25.*
     - earthaccess==0.16.0
     - tqdm
+    - mystmd
     - jupyterlab_myst
     - jupyter-keepalive
