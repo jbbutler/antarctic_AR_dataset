@@ -6,7 +6,7 @@ Welcome! This repository contains all of the source code, routines, and notebook
 
 In addition to the main paper and website, this project consists of 2 products:
 1. A new storm-by-storm catalog of Antarctic AR events, based on the Wille (2021) MERRA-2 vIVT threshold catalog
-2. A Python package called `artools`, which contains our implementation of our clustering algorithm as well as useful routines to manage a generic catalog of events (*documentation here*)
+2. A Python package called `artools`, which contains our implementation of our clustering algorithm as well as useful routines to manage a generic catalog of events (*TODO: add link to documentation here*)
 
 ## Getting Started with the AR Catalog
 
@@ -40,7 +40,7 @@ If you would like to run our clustering algorithm for your own gridded threshold
 
 If you would like to run the dataset streaming workflow, or reproduce the output of any of our notebooks, you should simply be able to run the notebooks. Since the workflows in these notebooks are very lightweight, we recommend you use [CryoCloud](https://cryointhecloud.com/), a cloud-hosted JupyterHub whose mission is to facilitate open, collaborative, and reproducible science. If you need to create an account, doing to is very easy! See [here](https://book.cryointhecloud.com/getting-started).
 
-Once you have an account and log in, you can spin up a CPU server. Select 'Build your own image' in the 'Environment' dropdown, enter the repository which has the `environmeny.yml` (either this one or your own clone), click 'Build image', and wait until it's built! Finally, choose your server size and then click 'Start'. You're ready to run!
+Once you have an account and log in, you can spin up a CPU server. Select 'Build your own image' in the 'Environment' dropdown, enter the repository which has the `environment.yml` (either this one or your own clone), click 'Build image', and wait until it's built! Finally, choose your server size and then click 'Start'. You're ready to run!
 
 
 
