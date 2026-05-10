@@ -4,7 +4,23 @@ project:
   # title:
   # description:
   # keywords: []
-  # authors: []
+  authors:
+    - name: James Butler
+      affiliations: ucb
+    - name: Michelle Maclennan
+      affiliation: bas
+    - name: Fernando Pérez
+      affiliation: ucb
+    - name: Jon McAuliffe
+      affiliation: ucb
+  affiliations:
+    - id: ucb
+      institution: University of California Berkeley
+      ror: https://ror.org/01an7q238
+      department: Statistics
+    - id: bas
+      institution: British Antarctic Survey
+      ror: https://ror.org/01rhff309
   github: https://github.com/jbbutler/antarctic_AR_dataset
   # To autogenerate a Table of Contents, run "myst init --write-toc"
   toc:
