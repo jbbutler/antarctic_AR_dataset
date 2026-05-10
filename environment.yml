@@ -3,13 +3,11 @@ channels:
   - conda-forge
 dependencies:
   - python=3.12
-  - jupyterlab=4.3.*
-  - ipywidgets=8.1.*
   - pip
-  - mystmd
   - ffmpeg
+  - ipykernel
+  - ipython
   - numpy=2.4.*
-  - cartopy=0.25.*
   - pandas=3.0.*
   - matplotlib=3.10.*
   - seaborn=0.13.*
@@ -18,12 +16,13 @@ dependencies:
   - h5netcdf=1.8.*
   - h5py=3.16.*
   - pytables=3.11.*
-  - dask=2026.3.*
   - pytest
   - pip:
+    - dask==2026.3.*
     - ray==2.54.*
+    - cartopy==0.25.*
     - earthaccess==0.16.0
     - tqdm
-    - jupyterlab_myst==2.6.*
-    - jupyter-keepalive==0.3.*
-    - -e . # used to install the editable version of artools while in development
+    - mystmd
+    - jupyterlab_myst
+    - jupyter-keepalive
