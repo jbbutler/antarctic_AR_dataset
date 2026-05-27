@@ -17,13 +17,12 @@ dependencies:
   - pytest
   - fastparquet
   - pip:
-    - dask=2026.3.*
+    - dask==2026.3.*
     - ray==2.54.*
     - mystmd
-    - cartopy=0.25.*
+    - cartopy==0.25.*
     - earthaccess==0.17.0
     - earthaccess[virtualizarr]
     - tqdm
     - jupyterlab_myst==2.6.*
     - jupyter-keepalive==0.3.*
-    - -e . # used to install the editable version of artools while in development
