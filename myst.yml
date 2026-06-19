@@ -32,7 +32,7 @@ project:
       children:
         - file: notebooks/quality_assurance/qa_aggregates.ipynb
         - file: notebooks/quality_assurance/qa_case_studies.ipynb
-        - file: notebooks/cmmt_comparison.ipynb
+        - file: notebooks/quality_assurance/cmmt_comparison.ipynb
         - file: notebooks/quality_assurance/qa_flickering_investigations.ipynb
         - file: notebooks/quality_assurance/qa_sensitivity_testing.ipynb
         - file: notebooks/quality_assurance/cmmt_comparison.ipynb
