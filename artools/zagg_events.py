@@ -21,7 +21,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from .attribute_utils import augment_storm_da
+# augment_storm_da is imported lazily inside export_events: module import must
+# not pull the streaming stack (ray/earthaccess) that attribute_utils drags in.
 
 # Catalog filenames encode the clustering hyperparameters, e.g.
 # epsspace0.5_epstime12_minpts5_nreppts10_seed12345.h5
@@ -71,7 +72,11 @@ def export_events(catalog_path, out_dir=None, storms=None, overwrite=False):
     Masks are single-variable files (variable name 'mask', int8) so zagg's
     reader opens them directly as DataArrays. Existing mask files are kept
     unless overwrite is set, so an interrupted export resumes cheaply; the
-    parquet is always rewritten to cover the requested storms.
+    parquet is always rewritten to cover the requested storms. Resumed files
+    are trusted as-written: the parquet rows are recomputed from the source
+    h5 while the on-disk masks are left untouched, so if the mask-writing code
+    changes between runs (e.g. augment_storm_da) the two can silently diverge.
+    After changing mask-writing code, re-run with overwrite=True.
 
     Inputs:
         catalog_path (string or Path): path to a catalog .h5 (the same file
@@ -101,6 +106,8 @@ def export_events(catalog_path, out_dir=None, storms=None, overwrite=False):
 
     if storms is not None:
         catalog = catalog.loc[list(storms)]
+
+    from .attribute_utils import augment_storm_da
 
     rows = []
     for storm_id, row in catalog.iterrows():
