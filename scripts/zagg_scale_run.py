@@ -13,7 +13,7 @@ after the slice reproduces scripts/zagg_parity.py's numbers for the same
 storms.
 
 Usage:
-    AWS_PROFILE=... python scripts/zagg_scale_run.py \
+    env AWS_PROFILE=... python scripts/zagg_scale_run.py \
         --s3-prefix s3://YOUR-BUCKET/ar-events/eps0.5-seed12345 \
         [--catalog epsspace0.5_..._seed12345.h5] [--n-storms 10 | --full]
         [--function-name process-shard] [--max-workers 1000] [--skip-mirror]
