@@ -76,7 +76,10 @@ def export_events(catalog_path, out_dir=None, storms=None, overwrite=False):
     are trusted as-written: the parquet rows are recomputed from the source
     h5 while the on-disk masks are left untouched, so if the mask-writing code
     changes between runs (e.g. augment_storm_da) the two can silently diverge.
-    After changing mask-writing code, re-run with overwrite=True.
+    After changing mask-writing code, re-run with overwrite=True. One instance:
+    masks written before coord rounding moved into this function carry raw
+    float-dirt coords (e.g. lon -5.92e-13) and must be re-exported with
+    overwrite=True so they match the 5dp-rounded statics.
 
     Inputs:
         catalog_path (string or Path): path to a catalog .h5 (the same file
@@ -113,6 +116,14 @@ def export_events(catalog_path, out_dir=None, storms=None, overwrite=False):
     for storm_id, row in catalog.iterrows():
         event_key = f'storm_{int(storm_id):05d}'
         raw = row['data_array']
+        # Round the mask coords at the source (the loading_utils convention) so
+        # every downstream consumer sees identical coordinates: the raw catalog
+        # carries float dirt (e.g. lon -5.92e-13 for 0.0), and while the LOCAL
+        # backend rounds on open, the LAMBDA path uploads this file verbatim and
+        # zagg's worker rounds nothing -- an unrounded lon then misses the
+        # 5dp-rounded statics on process_event's static.sel and raises KeyError.
+        # Rounding here also feeds the augmented mask and the bbox/t_start rows.
+        raw = raw.assign_coords(lat=raw.lat.round(5), lon=raw.lon.round(5))
         raw_path = masks_dir / f'{event_key}.nc'
         augmented_path = augmented_dir / f'{event_key}.nc'
 

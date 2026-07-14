@@ -146,3 +146,51 @@ def test_export_parquet_roundtrip(catalog_h5):
     back = pd.read_parquet(parquet_path)
     assert list(back['event_key']) == list(events['event_key'])
     assert list(back.columns) == list(events.columns)
+
+
+def test_export_rounds_dirty_coords(tmp_path):
+    '''A raw catalog mask can carry float dirt (e.g. lon -5.92e-13 for 0.0).
+    export_events must round lat/lon to 5dp at write time so both the raw and
+    augmented on-disk masks match the 5dp-rounded statics (the LAMBDA worker
+    rounds nothing, so an unrounded coord would KeyError on static.sel).'''
+    time = pd.date_range('1980-01-02', periods=2, freq='3h')
+    data = np.ones((2, 2, 3), dtype='int8')
+    dirty = xr.DataArray(
+        data,
+        dims=('time', 'lat', 'lon'),
+        coords={
+            'time': time,
+            'lat': [-70.0, -69.5],
+            'lon': [-5.92e-13, 0.625, 1.25],  # first cell is 0.0 + float dirt
+        },
+    )
+    catalog = pd.DataFrame(
+        {
+            'data_array': pd.Series({5.0: dirty}, dtype=object),
+            'is_landfalling': pd.Series({5.0: False}),
+        }
+    )
+    path = tmp_path / CATALOG_FNAME
+    catalog.to_hdf(path, key='df')
+
+    events, _ = export_events(path)
+    row = events.iloc[0]
+
+    for mask_col in ('mask_path', 'mask_augmented_path'):
+        written = xr.open_dataarray(row[mask_col])
+        # the float-dirt lon is rounded to a clean 0.0 on disk
+        assert written['lon'].values[0] == 0.0
+        np.testing.assert_array_equal(written['lon'].values, [0.0, 0.625, 1.25])
+
+    # the bbox rows are computed from the rounded array
+    assert row['lon_min'] == 0.0
+
+    # .sel against a 5dp-rounded static grid (loading_utils convention) resolves
+    static = xr.DataArray(
+        np.arange(6.0).reshape(2, 3),
+        dims=('lat', 'lon'),
+        coords={'lat': [-70.0, -69.5], 'lon': [0.0, 0.625, 1.25]},
+    ).assign_coords(lat=lambda d: d.lat.round(5), lon=lambda d: d.lon.round(5))
+    raw = xr.open_dataarray(row['mask_path'])
+    selected = static.sel(lat=raw['lat'], lon=raw['lon'])
+    assert selected.shape == (2, 3)

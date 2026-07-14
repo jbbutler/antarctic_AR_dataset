@@ -262,6 +262,8 @@ def local_event_tuples(events, index, collections, static_data, *, augmented=Fal
     for _, row in events.iterrows():
         t_start, t_end = _event_time_range(row, augmented)
         mask = xr.open_dataarray(row[mask_col])
+        # export_events now rounds mask coords at write time, so this is a cheap
+        # no-op safety net (harmless for masks exported before that change).
         mask = mask.assign_coords(lat=mask.lat.round(5), lon=mask.lon.round(5))
         opened = {}
         for name in collections:
