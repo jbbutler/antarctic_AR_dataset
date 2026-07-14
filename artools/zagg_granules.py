@@ -320,10 +320,12 @@ def mirror_to_s3(events, static_paths, s3_prefix, *, augmented_too=True):
             (pass uri_map.get into events_for_zagg)
         static_uris (dictionary): {static_name: s3_uri}
     '''
-    import boto3
-
     if not s3_prefix.startswith('s3://'):
         raise ValueError(f's3_prefix must be an s3:// URI, got {s3_prefix!r}')
+
+    # boto3 rides in with the zagg extra; only the actual upload needs it
+    import boto3
+
     bucket, _, prefix = s3_prefix[5:].partition('/')
     prefix = prefix.rstrip('/')
     client = boto3.client('s3')
