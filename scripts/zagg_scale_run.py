@@ -55,6 +55,18 @@ def _mirror(events, static_paths, s3_prefix, cache_path, skip):
                 f'--skip-mirror needs a prior mirror map at {cache_path}'
             )
         cached = json.loads(cache_path.read_text())
+        # the cache is prefix-agnostic, so a --skip-mirror against a different
+        # prefix would read inputs from the mirrored one while writing outputs
+        # elsewhere; refuse unless the cached prefix matches (a legacy cache
+        # with no recorded prefix counts as a mismatch)
+        cached_prefix = cached.get('s3_prefix')
+        if cached_prefix != s3_prefix:
+            raise ValueError(
+                f'cached mirror map targets prefix {cached_prefix!r} but this run '
+                f'requested {s3_prefix!r}; --skip-mirror would read inputs from the '
+                f'cached prefix while writing outputs to the requested one -- re-run '
+                f'without --skip-mirror to mirror into {s3_prefix!r}'
+            )
         missing = [p for p in events['mask_path'] if p not in cached['uri_map']]
         missing += [
             p for p in events['mask_augmented_path'] if p not in cached['uri_map']
@@ -64,12 +76,38 @@ def _mirror(events, static_paths, s3_prefix, cache_path, skip):
                 f'{len(missing)} mask file(s) are not in the cached mirror map '
                 f'(first: {missing[0]!r}); re-run without --skip-mirror'
             )
-        return cached['uri_map'], cached['static_uris']
+        # statics aren't overwrite-guarded like masks: a cache written before the
+        # climatology existed would omit it (anomalies fan out baseline-less), and
+        # a rebuilt static leaves the cache pointing at a stale S3 object
+        static_uris = cached['static_uris']
+        static_mtimes = cached.get('static_mtimes', {})
+        missing_statics = [name for name in static_paths if name not in static_uris]
+        if missing_statics:
+            raise KeyError(
+                f'static file(s) {missing_statics} are not in the cached mirror map; '
+                f're-run without --skip-mirror to mirror them'
+            )
+        stale = [
+            name for name, path in static_paths.items()
+            if Path(path).stat().st_mtime > static_mtimes.get(name, 0.0)
+        ]
+        if stale:
+            raise ValueError(
+                f'static file(s) {stale} are newer than the cached mirror; the '
+                f'mirrored copies are stale -- re-run without --skip-mirror'
+            )
+        return cached['uri_map'], static_uris
 
     logger.info('mirroring %d storms (raw + augmented) + statics to %s',
                 len(events), s3_prefix)
     uri_map, static_uris = mirror_to_s3(events, static_paths, s3_prefix)
-    cache_path.write_text(json.dumps({'uri_map': uri_map, 'static_uris': static_uris}))
+    static_mtimes = {name: Path(path).stat().st_mtime for name, path in static_paths.items()}
+    cache_path.write_text(json.dumps({
+        's3_prefix': s3_prefix,
+        'uri_map': uri_map,
+        'static_uris': static_uris,
+        'static_mtimes': static_mtimes,
+    }))
     logger.info('mirror map cached at %s', cache_path)
     return uri_map, static_uris
 
