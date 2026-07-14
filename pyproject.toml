@@ -32,7 +32,8 @@ dependencies = [
     "dask==2026.3.*",
     "tables==3.11.*",
     "h5netcdf==1.8.*",
-    "h5py==3.16.*"
+    "h5py==3.16.*",
+    "fastparquet"
 ]
 
 [project.urls]
