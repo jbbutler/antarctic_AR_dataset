@@ -79,6 +79,32 @@ def test_geometry_trajectory_opt_in(exported):
     assert len(trajectory) == 2
 
 
+def test_geometry_region_na_for_non_landfalling(exported, tmp_path):
+    '''A storm that never touches the AIS gets region NA and keeps the
+    well-defined zeros for the landfalling-area columns.'''
+    _, statics = exported
+    lat = np.array([-70.0, -69.5])
+    lon = np.array([0.0, 0.625])
+    time = np.array(['1980-01-02T00', '1980-01-02T03'], dtype='datetime64[ns]')
+    # storm occupies only the northern (non-AIS) row at both timesteps
+    data = np.array([[[0, 0], [1, 1]], [[0, 0], [1, 1]]], dtype='int8')
+    mask = xr.DataArray(
+        data, dims=('time', 'lat', 'lon'),
+        coords={'time': time, 'lat': lat, 'lon': lon}, name='mask',
+    )
+    mask_path = tmp_path / 'storm_00003.nc'
+    mask.to_netcdf(mask_path)
+    events = pd.DataFrame(
+        [{'event_key': 'storm_00003', 'is_landfalling': False, 'mask_path': str(mask_path)}]
+    )
+
+    geometry = geometry_attributes(events, statics)
+    (row,) = geometry.to_dict('records')
+    assert pd.isna(row['region'])
+    assert row['mean_landfalling_area'] == 0
+    assert row['cumulative_landfalling_area'] == 0
+
+
 def test_assemble_attribute_table_joins_and_writes(exported, tmp_path):
     events, statics = exported
     geometry = geometry_attributes(events, statics)
@@ -120,3 +146,16 @@ def test_assemble_attribute_table_rejects_column_collisions(exported):
     clashing = pd.DataFrame([{'event_key': 'storm_00001', 'max_area': 0.0}])
     with pytest.raises(ValueError, match='max_area'):
         assemble_attribute_table(events, geometry, [clashing])
+
+
+def test_assemble_attribute_table_rejects_duplicate_event_keys(exported):
+    events, statics = exported
+    geometry = geometry_attributes(events, statics)
+    dupes = pd.DataFrame(
+        [
+            {'event_key': 'storm_00001', 'max_T2m_ais': 271.5},
+            {'event_key': 'storm_00001', 'max_T2m_ais': 272.0},
+        ]
+    )
+    with pytest.raises(pd.errors.MergeError):
+        assemble_attribute_table(events, geometry, [dupes])

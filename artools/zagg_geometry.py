@@ -40,8 +40,11 @@ def geometry_attributes(
     max_area, mean_landfalling_area, cumulative_landfalling_area (all int,
     km^2 / km^2 / km^2·days), duration (hours), start_date, end_date,
     max_south_extent (deg lat), and region (the landfalling longitude
-    sector). trajectory (a per-timestep DataFrame) is an object column that
-    cannot ride into Parquet, so it is opt-in for in-memory use only.
+    sector). region is pd.NA for non-landfalling storms — the sector
+    cumulative-spacetime values are all 0 there, so idxmax would return an
+    arbitrary label; the landfalling-area columns stay 0 (well-defined) for
+    those storms. trajectory (a per-timestep DataFrame) is an object column
+    that cannot ride into Parquet, so it is opt-in for in-memory use only.
 
     Inputs:
         events (pd.DataFrame): rows from zagg_events.export_events
@@ -66,6 +69,7 @@ def geometry_attributes(
         extract_trajectory,
         find_landfalling_region,
         find_region_masks,
+        is_landfalling,
     )
 
     ais_mask = statics['ais_mask'].astype(bool)
@@ -76,6 +80,14 @@ def geometry_attributes(
     for _, event in events.iterrows():
         mask = xr.open_dataarray(event['mask_path'])
         mask = mask.assign_coords(lat=mask.lat.round(5), lon=mask.lon.round(5))
+        # region is only well-defined for landfalling storms: the sector CLAs
+        # are all 0 otherwise and idxmax returns an arbitrary label. Prefer the
+        # catalog's is_landfalling flag; fall back to a mask∩AIS test when the
+        # column is absent.
+        if 'is_landfalling' in event.index:
+            landfalling = bool(event['is_landfalling'])
+        else:
+            landfalling = bool(is_landfalling(mask, ais_mask))
         row = {
             'event_key': event['event_key'],
             'max_area': int(compute_max_area(mask, cell_areas)),
@@ -87,7 +99,11 @@ def geometry_attributes(
             'start_date': add_start_date(mask),
             'end_date': add_end_date(mask),
             'max_south_extent': compute_max_southward_extent(mask),
-            'region': find_landfalling_region(mask, cell_areas, region_masks),
+            'region': (
+                find_landfalling_region(mask, cell_areas, region_masks)
+                if landfalling
+                else pd.NA
+            ),
         }
         if include_trajectory:
             row['trajectory'] = extract_trajectory(mask)
@@ -119,14 +135,17 @@ def assemble_attribute_table(events, geometry, zagg_outputs, out_path=None):
     keep = ['event_key', 'storm_id', 'is_landfalling', 'catalog_file',
             'eps_space', 'eps_time', 'min_pts', 'n_rep_pts', 'seed']
     table = events[[c for c in keep if c in events.columns]].copy()
-    table = table.merge(geometry, on='event_key', how='left')
+    # geometry comes from our own one-row-per-storm loop, but the 1:1 guard is
+    # cheap insurance; zagg outputs must be unique per key (m:1) so a duplicated
+    # event_key fails loudly instead of silently fanning out storm rows.
+    table = table.merge(geometry, on='event_key', how='left', validate='1:1')
     for output in zagg_outputs:
         frame = output if isinstance(output, pd.DataFrame) else pd.read_parquet(output)
         frame = frame.drop(columns=['timesteps_processed'], errors='ignore')
         overlap = set(table.columns) & set(frame.columns) - {'event_key'}
         if overlap:
             raise ValueError(f'zagg output would overwrite existing columns: {sorted(overlap)}')
-        table = table.merge(frame, on='event_key', how='left')
+        table = table.merge(frame, on='event_key', how='left', validate='m:1')
     if out_path is not None:
         out_path = Path(out_path)
         out_path.parent.mkdir(parents=True, exist_ok=True)
