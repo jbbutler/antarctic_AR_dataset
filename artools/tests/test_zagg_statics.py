@@ -78,7 +78,7 @@ def test_build_climatology_monthly_means(catalogs_dir, monkeypatch):
     monkeypatch.setattr(earthaccess, 'login', lambda: None)
     monkeypatch.setattr(earthaccess, 'search_data', lambda **k: ['g1', 'g2'])
     monkeypatch.setattr(earthaccess, 'open', lambda granules: granules)
-    monkeypatch.setattr(xr, 'open_mfdataset', lambda handles: monthly)
+    monkeypatch.setattr(xr, 'open_mfdataset', lambda handles, **kwargs: monthly)
 
     out = catalogs_dir / 'static' / 'clim.nc'
     clim = build_climatology(('1980-01-01', '1981-12-31'), out)
