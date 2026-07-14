@@ -36,6 +36,11 @@ dependencies = [
     "fastparquet"
 ]
 
+[project.optional-dependencies]
+# offload the storm attribute aggregation to zagg's temporal pipeline
+# (englacial/zagg#213); needs the release carrying englacial/zagg#214
+zagg = ["zagg>=0.25"]
+
 [project.urls]
 "Homepage" = "https://github.com/jbbutler/antarctic_AR_dataset"
 "Bug Tracker" = "https://github.com/jbbutler/antarctic_AR_dataset/issues"
