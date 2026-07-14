@@ -71,22 +71,47 @@ def build_granule_index(time_range, collections=None, cache_path=None):
         collections (list of str): collection names to index; defaults to
             every key in MERRA2_DOIS
         cache_path (str or Path): JSON cache; loaded instead of re-querying
-            when it exists and is non-empty
+            when it covers the requested range and collections. The cache is
+            written as {"meta": {"time_range": [start, end], "collections": [...]},
+            "index": {...}} so a later call with a different range/collections
+            can tell whether the cached content actually satisfies it.
 
     Outputs:
         index (dictionary): {collection_name: {date: url}}
     '''
+    if collections is None:
+        collections = list(MERRA2_DOIS)
+
     if cache_path:
         cache_path = Path(cache_path)
         if cache_path.exists() and cache_path.stat().st_size > 0:
-            logger.info('loading cached granule index from %s', cache_path)
             with open(cache_path) as f:
-                return json.load(f)
+                cached = json.load(f)
+            meta = cached.get('meta') if isinstance(cached, dict) else None
+            if meta is None:
+                logger.info(
+                    'cache %s has no meta (legacy); re-querying', cache_path
+                )
+            else:
+                cached_start, cached_end = meta['time_range']
+                cached_collections = set(meta['collections'])
+                covers_range = cached_start <= time_range[0] and cached_end >= time_range[1]
+                covers_collections = cached_collections.issuperset(collections)
+                if covers_range and covers_collections:
+                    logger.info('loading cached granule index from %s', cache_path)
+                    return {name: cached['index'][name] for name in collections}
+                logger.info(
+                    'cache %s does not cover requested range/collections '
+                    '(cached range=%s collections=%s; requested range=%s '
+                    'collections=%s); re-querying',
+                    cache_path,
+                    meta['time_range'],
+                    sorted(cached_collections),
+                    list(time_range),
+                    list(collections),
+                )
 
     import earthaccess
-
-    if collections is None:
-        collections = list(MERRA2_DOIS)
 
     earthaccess.login()
     by_doi = {}
@@ -108,8 +133,12 @@ def build_granule_index(time_range, collections=None, cache_path=None):
     index = {name: by_doi[MERRA2_DOIS[name]] for name in collections}
     if cache_path:
         cache_path.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            'meta': {'time_range': list(time_range), 'collections': list(collections)},
+            'index': index,
+        }
         with open(cache_path, 'w') as f:
-            json.dump(index, f)
+            json.dump(payload, f)
         logger.info('cached granule index to %s', cache_path)
     return index
 
@@ -179,10 +208,18 @@ def events_for_zagg(
     payloads = []
     for _, row in events.iterrows():
         t_start, t_end = _event_time_range(row, augmented)
+        local_mask = row[mask_col]
+        mask_uri = translate(local_mask)
+        if not mask_uri:
+            raise ValueError(
+                f'no mask URI for event {row["event_key"]!r}: local path '
+                f'{local_mask!r} is not in the uri_map. Ensure mirror_to_s3 '
+                f'uploaded it (augmented_too=True for the augmented masks).'
+            )
         payloads.append(
             {
                 'event_key': row['event_key'],
-                'event_mask_uri': translate(row[mask_col]),
+                'event_mask_uri': mask_uri,
                 'collection_uris': {
                     name: granule_urls_for_range(index, name, t_start, t_end)
                     for name in collections
