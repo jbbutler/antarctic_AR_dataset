@@ -22,6 +22,10 @@ import pandas as pd
 
 logger = logging.getLogger(__name__)
 
+# granule-index cache layout version: bumped when the on-disk shape changes
+# (v2: each date maps to {"s3": url, "https": url} instead of one url)
+_CACHE_VERSION = 2
+
 # MERRA-2 collection DOIs, keyed by the collection names the zagg configs use.
 # merra2_flx and merra2_precip share a DOI: same source files, two processing
 # branches (vIVT reads raw rates; precip scales/resamples to 3-hourly totals).
@@ -50,12 +54,23 @@ def _granule_date(granule):
     raise ValueError(f'could not extract a date from granule: {granule}')
 
 
-def _granule_url(granule):
-    '''Extract the direct-S3 URL of an earthaccess granule (https fallback).'''
-    links = granule.data_links(access='direct') or granule.data_links()
-    if not links:
+def _granule_urls(granule):
+    '''Both access forms of an earthaccess granule's data link.
+
+    Direct-S3 links only open in-region (the Lambda fleet, us-west-2);
+    off-region local streaming needs the HTTPS form — earthaccess refuses
+    S3 links outside the region.
+    '''
+    urls = {}
+    direct = granule.data_links(access='direct')
+    if direct:
+        urls['s3'] = direct[0]
+    external = granule.data_links(access='external') or granule.data_links()
+    if external:
+        urls['https'] = external[0]
+    if not urls:
         raise ValueError(f'no data links found for granule: {granule}')
-    return links[0]
+    return urls
 
 
 def build_granule_index(time_range, collections=None, cache_path=None):
@@ -88,9 +103,9 @@ def build_granule_index(time_range, collections=None, cache_path=None):
             with open(cache_path) as f:
                 cached = json.load(f)
             meta = cached.get('meta') if isinstance(cached, dict) else None
-            if meta is None:
+            if meta is None or meta.get('version') != _CACHE_VERSION:
                 logger.info(
-                    'cache %s has no meta (legacy); re-querying', cache_path
+                    'cache %s has no meta or an older layout; re-querying', cache_path
                 )
             else:
                 cached_start, cached_end = meta['time_range']
@@ -125,7 +140,7 @@ def build_granule_index(time_range, collections=None, cache_path=None):
         dates = {}
         for granule in granules:
             try:
-                dates[_granule_date(granule)] = _granule_url(granule)
+                dates[_granule_date(granule)] = _granule_urls(granule)
             except ValueError as e:
                 logger.warning('skipping granule: %s', e)
         by_doi[doi] = dates
@@ -134,7 +149,11 @@ def build_granule_index(time_range, collections=None, cache_path=None):
     if cache_path:
         cache_path.parent.mkdir(parents=True, exist_ok=True)
         payload = {
-            'meta': {'time_range': list(time_range), 'collections': list(collections)},
+            'meta': {
+                'version': _CACHE_VERSION,
+                'time_range': list(time_range),
+                'collections': list(collections),
+            },
             'index': index,
         }
         with open(cache_path, 'w') as f:
@@ -143,7 +162,7 @@ def build_granule_index(time_range, collections=None, cache_path=None):
     return index
 
 
-def granule_urls_for_range(index, collection, t_start, t_end):
+def granule_urls_for_range(index, collection, t_start, t_end, *, access='s3'):
     '''
     The granule URLs covering [t_start, t_end] for one collection.
 
@@ -155,6 +174,8 @@ def granule_urls_for_range(index, collection, t_start, t_end):
         index (dictionary): from build_granule_index
         collection (string): collection name
         t_start, t_end: timestamps (anything pd.Timestamp accepts)
+        access (string): 's3' (direct links, in-region/Lambda) or 'https'
+            (off-region local streaming)
 
     Outputs:
         urls (list of str)
@@ -171,7 +192,16 @@ def granule_urls_for_range(index, collection, t_start, t_end):
             if len(missing) > 5
             else f'granule index for {collection!r} is missing day(s): {missing}'
         )
-    return [by_date[d.strftime('%Y-%m-%d')] for d in dates]
+    urls = []
+    for d in dates:
+        forms = by_date[d.strftime('%Y-%m-%d')]
+        if access not in forms:
+            raise KeyError(
+                f'granule index for {collection!r} has no {access!r} link for '
+                f'{d.date()} (available: {sorted(forms)})'
+            )
+        urls.append(forms[access])
+    return urls
 
 
 def _event_time_range(row, augmented):
@@ -267,7 +297,8 @@ def local_event_tuples(events, index, collections, static_data, *, augmented=Fal
         mask = mask.assign_coords(lat=mask.lat.round(5), lon=mask.lon.round(5))
         opened = {}
         for name in collections:
-            urls = granule_urls_for_range(index, name, t_start, t_end)
+            # https form: direct-S3 links only open in-region (Lambda)
+            urls = granule_urls_for_range(index, name, t_start, t_end, access='https')
             ds = xr.open_mfdataset(earthaccess.open(urls))
             opened[name] = ds.assign_coords(lat=ds.lat.round(5), lon=ds.lon.round(5))
         tuples.append((row['event_key'], mask, opened, static_data))

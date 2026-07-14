@@ -15,7 +15,13 @@ from artools.zagg_granules import (
 
 def _index(days=('1980-01-02', '1980-01-03', '1980-01-04')):
     return {
-        name: {d: f's3://gesdisc/{name}/{d}.nc4' for d in days}
+        name: {
+            d: {
+                's3': f's3://gesdisc/{name}/{d}.nc4',
+                'https': f'https://gesdisc/data/{name}/{d}.nc4',
+            }
+            for d in days
+        }
         for name in ('merra2_slv', 'merra2_precip')
     }
 
@@ -43,7 +49,9 @@ class _FakeGranule(dict):
         self._url = url
 
     def data_links(self, access=None):
-        return [self._url]
+        if access == 'direct':
+            return [self._url]
+        return [self._url.replace('s3://', 'https://')]
 
 
 def test_build_granule_index_queries_each_doi_once(monkeypatch, tmp_path):
@@ -64,7 +72,11 @@ def test_build_granule_index_queries_each_doi_once(monkeypatch, tmp_path):
     # flx and precip share a DOI: 5 collections, 4 queries
     assert len(queried) == len(set(queried)) == 4
     assert index['merra2_flx'] == index['merra2_precip']
-    assert index['merra2_slv'] == {'1980-01-02': f's3://x/{MERRA2_DOIS["merra2_slv"]}/a.nc4'}
+    # both access forms recorded per date (s3 for the fleet, https for local)
+    slv = MERRA2_DOIS['merra2_slv']
+    assert index['merra2_slv'] == {
+        '1980-01-02': {'s3': f's3://x/{slv}/a.nc4', 'https': f'https://x/{slv}/a.nc4'}
+    }
     # cache round-trip short-circuits the query
     queried.clear()
     again = build_granule_index(('1980-01-01', '1980-01-05'), cache_path=cache)
@@ -157,6 +169,23 @@ def test_granule_urls_for_range_one_per_day():
         's3://gesdisc/merra2_slv/1980-01-02.nc4',
         's3://gesdisc/merra2_slv/1980-01-03.nc4',
     ]
+
+
+def test_granule_urls_https_access():
+    urls = granule_urls_for_range(
+        _index(), 'merra2_slv', np.datetime64('1980-01-02'), np.datetime64('1980-01-02T18'),
+        access='https',
+    )
+    assert urls == ['https://gesdisc/data/merra2_slv/1980-01-02.nc4']
+
+
+def test_granule_urls_missing_access_form_raises():
+    index = {'merra2_slv': {'1980-01-02': {'s3': 's3://only'}}}
+    with pytest.raises(KeyError, match='https'):
+        granule_urls_for_range(
+            index, 'merra2_slv', np.datetime64('1980-01-02'), np.datetime64('1980-01-02'),
+            access='https',
+        )
 
 
 def test_granule_urls_missing_day_raises():
