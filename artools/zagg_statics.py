@@ -103,7 +103,9 @@ def build_climatology(time_range, out_path, variables=('T2M', 'TQV')):
     earthaccess.login()
     granules = earthaccess.search_data(doi=CLIMATOLOGY_DOI, temporal=time_range, count=-1)
     logger.info('building climatology from %d monthly granules', len(granules))
-    ds = xr.open_mfdataset(earthaccess.open(granules))[list(variables)]
+    # parallel opens: serial metadata reads over https make multi-decade
+    # baselines pathologically slow (dask is a core dependency)
+    ds = xr.open_mfdataset(earthaccess.open(granules), parallel=True)[list(variables)]
     ds = ds.sel(lat=LAT_SLICE)
     climatology = _rounded(ds).groupby('time.month').mean('time').compute()
     out_path = Path(out_path)
