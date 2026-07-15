@@ -14,6 +14,7 @@ data_source:
   collections:
     merra2_precip:                 # M2T1NXINT: hourly rates, half-hour stamps
       doi: "10.5067/Q5GVUVUIVGO7"
+      coord_round: 5   # MERRA-2 coord arrays carry float dirt (zagg issue 229)
       variables: [PRECCU, PRECLS, PRECSN]
       time_offset: "-30min"
       # kg m-2 s-1 rates -> 3-hourly totals on the mask's time grid

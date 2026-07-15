@@ -17,17 +17,21 @@ data_source:
   collections:
     merra2_slv:                    # M2I1NXASM: T2M, TQV, SLP (hourly instantaneous, on the hour)
       doi: "10.5067/3Z173KIE2TPD"
+      coord_round: 5   # MERRA-2 coord arrays carry float dirt (zagg issue 229)
       variables: [T2M, TQV, SLP]
     merra2_flx:                    # M2T1NXINT: VFLXQV (hourly averages, half-hour stamps)
       doi: "10.5067/Q5GVUVUIVGO7"
+      coord_round: 5   # MERRA-2 coord arrays carry float dirt (zagg issue 229)
       variables: [VFLXQV]
       time_offset: "-30min"
     merra2_v850:                   # M2T1NXSLV: V850 (hourly averages, half-hour stamps)
       doi: "10.5067/VJAFPLI1CSIV"
+      coord_round: 5   # MERRA-2 coord arrays carry float dirt (zagg issue 229)
       variables: [V850]
       time_offset: "-30min"
     merra2_omega:                  # M2I3NPASM: OMEGA on levels (3-hourly instantaneous)
       doi: "10.5067/QBZ6MG944HW0"
+      coord_round: 5   # MERRA-2 coord arrays carry float dirt (zagg issue 229)
       variables: [OMEGA]
   # Static fields the mask providers / anomaly transform / triggers consume.
   # Local defaults for laptop runs; Lambda events carry the mirrored S3 URIs
