@@ -178,6 +178,13 @@ def main():
             config_path, summary['events_with_data'], summary['events_error'],
             summary['wall_time_s'], summary.get('output_path'),
         )
+        if summary['events_with_data'] == 0 and summary['events_error'] == summary['total_events']:
+            logger.error(
+                '%s failed for every event -- a systemic failure, not per-storm '
+                'flakiness; skipping the remaining run(s) rather than repeating it',
+                config_path,
+            )
+            break
 
     failed = sum(s['events_error'] for s in summaries.values())
     print('\n== scale run summary ==')
