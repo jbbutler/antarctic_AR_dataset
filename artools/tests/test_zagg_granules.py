@@ -227,10 +227,15 @@ def test_events_for_zagg_unmapped_mask_raises():
 
 
 def test_events_for_zagg_input_credentials_channel():
-    # masks/statics live in the (public) mirror bucket, which the workers'
-    # GES DISC source creds cannot validly sign -> unsigned by default
-    # (zagg issue #223); an explicit dict passes through for private mirrors.
+    # default None -> worker execution role (the mirror bucket is readable by
+    # the deploying account's role; GES DISC source creds can never sign it --
+    # zagg issue #223). 'unsigned' or an explicit dict opt in per bucket.
     (payload,) = events_for_zagg(_events(), _index(), ['merra2_slv'], {})
+    assert payload['input_credentials'] is None
+
+    (payload,) = events_for_zagg(
+        _events(), _index(), ['merra2_slv'], {}, input_credentials='unsigned'
+    )
     assert payload['input_credentials'] == 'unsigned'
 
     creds = {'accessKeyId': 'mine'}

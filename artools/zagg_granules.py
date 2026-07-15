@@ -217,7 +217,7 @@ def events_for_zagg(
     *,
     augmented=False,
     uri_map=None,
-    input_credentials='unsigned',
+    input_credentials=None,
 ):
     '''
     Build the Lambda-backend URI dicts for a set of exported storms.
@@ -237,10 +237,13 @@ def events_for_zagg(
             mapping returned by mirror_to_s3); default uses local paths, which
             only works for local smoke tests of the payload shape
         input_credentials: the worker-side channel for reading the masks and
-            statics (zagg issue #223): 'unsigned' (default -- the mirror
-            bucket is public, and the workers' GES DISC source credentials
-            cannot validly sign it), an explicit creds dict, or None for the
-            worker execution role
+            statics (zagg issue #223). Default None -> the worker execution
+            role, which is correct when the Lambda stack can read the mirror
+            bucket (the usual case: you mirrored into a bucket your account
+            owns or granted). Pass 'unsigned' only for a bucket that allows
+            anonymous read, or an explicit creds dict otherwise. The GES DISC
+            source credentials can never sign the mirror bucket (cross-account
+            rule), which is why this is a separate channel at all.
 
     Outputs:
         payloads (list of dict)
