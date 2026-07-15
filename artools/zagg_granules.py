@@ -210,7 +210,14 @@ def _event_time_range(row, augmented):
 
 
 def events_for_zagg(
-    events, index, collections, static_uris, *, augmented=False, uri_map=None
+    events,
+    index,
+    collections,
+    static_uris,
+    *,
+    augmented=False,
+    uri_map=None,
+    input_credentials='unsigned',
 ):
     '''
     Build the Lambda-backend URI dicts for a set of exported storms.
@@ -229,6 +236,11 @@ def events_for_zagg(
         uri_map (callable): optional local-path -> URI translation (e.g. the
             mapping returned by mirror_to_s3); default uses local paths, which
             only works for local smoke tests of the payload shape
+        input_credentials: the worker-side channel for reading the masks and
+            statics (zagg issue #223): 'unsigned' (default -- the mirror
+            bucket is public, and the workers' GES DISC source credentials
+            cannot validly sign it), an explicit creds dict, or None for the
+            worker execution role
 
     Outputs:
         payloads (list of dict)
@@ -249,6 +261,7 @@ def events_for_zagg(
         payloads.append(
             {
                 'event_key': row['event_key'],
+                'input_credentials': input_credentials,
                 'event_mask_uri': mask_uri,
                 'collection_uris': {
                     name: granule_urls_for_range(index, name, t_start, t_end)

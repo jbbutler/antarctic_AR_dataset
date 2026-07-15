@@ -226,6 +226,20 @@ def test_events_for_zagg_unmapped_mask_raises():
         events_for_zagg(_events(), _index(), ['merra2_slv'], {}, uri_map={}.get)
 
 
+def test_events_for_zagg_input_credentials_channel():
+    # masks/statics live in the (public) mirror bucket, which the workers'
+    # GES DISC source creds cannot validly sign -> unsigned by default
+    # (zagg issue #223); an explicit dict passes through for private mirrors.
+    (payload,) = events_for_zagg(_events(), _index(), ['merra2_slv'], {})
+    assert payload['input_credentials'] == 'unsigned'
+
+    creds = {'accessKeyId': 'mine'}
+    (payload,) = events_for_zagg(
+        _events(), _index(), ['merra2_slv'], {}, input_credentials=creds
+    )
+    assert payload['input_credentials'] == creds
+
+
 def test_mirror_to_s3_uploads_and_maps(monkeypatch, tmp_path):
     boto3 = pytest.importorskip('boto3')
 
