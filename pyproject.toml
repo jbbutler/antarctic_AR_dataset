@@ -38,12 +38,10 @@ dependencies = [
 
 [project.optional-dependencies]
 # offload the storm attribute aggregation to zagg's temporal pipeline
-# (englacial/zagg#213); needs the release carrying englacial/zagg#214.
-# 0.25 is the first release expected to carry that work: this floor is
-# forward-looking and unsatisfiable until that release exists (PyPI is at
-# 0.24.x today), so install zagg from the branch/main for now. The number
-# is adjusted to the actual release at cut time.
-zagg = ["zagg>=0.25"]
+# (englacial/zagg#213). 0.26 is the floor: the temporal engine landed in
+# 0.25 (englacial/zagg#214) and 0.26 adds the Lambda-layer xarray/h5netcdf
+# deps the fleet workers need (englacial/zagg#220).
+zagg = ["zagg>=0.26"]
 
 [project.urls]
 "Homepage" = "https://github.com/jbbutler/antarctic_AR_dataset"
