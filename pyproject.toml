@@ -38,9 +38,12 @@ dependencies = [
 
 [project.optional-dependencies]
 # offload the storm attribute aggregation to zagg's temporal pipeline
-# (englacial/zagg#213). 0.26 is the floor: the temporal engine landed in
-# 0.25 (englacial/zagg#214) and 0.26 adds the Lambda-layer xarray/h5netcdf
-# deps the fleet workers need (englacial/zagg#220).
+# (englacial/zagg#213). 0.27 is the floor: the temporal engine landed in 0.25
+# (englacial/zagg#214), 0.26 added the Lambda-layer xarray/h5netcdf deps
+# (englacial/zagg#220), and 0.27 carries the split credential channels the
+# payload builder emits (englacial/zagg#223) -- an older client silently drops
+# input_credentials, which 403s against a public mirror from any account that
+# does not own it.
 zagg = ["zagg>=0.27"]
 
 [project.urls]
