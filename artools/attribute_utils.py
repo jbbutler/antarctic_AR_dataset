@@ -293,9 +293,9 @@ def compute_max_SLPgrad(storm_da, var_da, area_da, ais_da):
         return np.nan
         
     rads = var_da_subset_landfall.assign_coords(lon=np.radians(var_da_subset_landfall.lon), lat=np.radians(var_da_subset_landfall.lat))
-    r = 6378 
+    r = 6378 # radius of the earth in km
     lat_partials = rads.differentiate('lat')/r
-    lon_partials = rads.differentiate('lon')/(np.sin(rads.lat)*r)
+    lon_partials = rads.differentiate('lon')/(np.cos(rads.lat)*r)
     
     magnitude = np.sqrt(lon_partials**2 + lat_partials**2)
     # reassign coordinates to be degrees instead of radians to create mask
