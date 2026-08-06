@@ -1,0 +1,94 @@
+# AR storm attributes on the zagg temporal pipeline (englacial/zagg#213).
+#
+# The 12 MERRA-2 field attributes computed under the RAW storm masks; the two
+# precipitation attributes run separately under the 24-hour augmented masks
+# (ar_precip.yaml) and the outputs join on event_key. Mask-geometry attributes
+# (area, duration, dates, ...) are computed client-side by artools and never
+# stream MERRA-2.
+#
+# Events come from artools.zagg_events.export_events +
+# artools.zagg_granules.events_for_zagg / local_event_tuples.
+pipeline:
+  type: temporal
+
+data_source:
+  reader: xarray_s3
+  credentials_provider: gesdisc
+  collections:
+    merra2_slv:                    # M2I1NXASM: T2M, TQV, SLP (hourly instantaneous, on the hour)
+      doi: "10.5067/3Z173KIE2TPD"
+      coord_round: 5   # MERRA-2 coord arrays carry float dirt (zagg issue 229)
+      variables: [T2M, TQV, SLP]
+    merra2_flx:                    # M2T1NXINT: VFLXQV (hourly averages, half-hour stamps)
+      doi: "10.5067/Q5GVUVUIVGO7"
+      coord_round: 5   # MERRA-2 coord arrays carry float dirt (zagg issue 229)
+      variables: [VFLXQV]
+      time_offset: "-30min"
+    merra2_v850:                   # M2T1NXSLV: V850 (hourly averages, half-hour stamps)
+      doi: "10.5067/VJAFPLI1CSIV"
+      coord_round: 5   # MERRA-2 coord arrays carry float dirt (zagg issue 229)
+      variables: [V850]
+      time_offset: "-30min"
+    merra2_omega:                  # M2I3NPASM: OMEGA on levels (3-hourly instantaneous)
+      doi: "10.5067/QBZ6MG944HW0"
+      coord_round: 5   # MERRA-2 coord arrays carry float dirt (zagg issue 229)
+      variables: [OMEGA]
+  # Static fields the mask providers / anomaly transform / triggers consume.
+  # Local defaults for laptop runs; Lambda events carry the mirrored S3 URIs
+  # (artools.zagg_granules.mirror_to_s3).
+  static_data:
+    ais_mask: ../antarctic_AR_catalogs/static/ais_mask.nc
+    cell_areas: ../antarctic_AR_catalogs/static/cell_areas.nc
+    climatology: ../antarctic_AR_catalogs/static/merra2_monthly_climatology.nc
+
+aggregation:
+  variables:
+    # --- lifetime extremes over the AIS ---
+    max_T2m_ais:
+      {variable: T2M, collection: merra2_slv, spatial_func: max,
+       temporal_reducer: max, mask: ais}
+    max_T2M_anomaly_ais:
+      {variable: T2M, collection: merra2_slv, spatial_func: max,
+       temporal_reducer: max, mask: ais, anomaly: true}
+    max_IWV_ais:
+      {variable: TQV, collection: merra2_slv, spatial_func: max,
+       temporal_reducer: max, mask: ais}
+    max_IWV_anomaly_ais:
+      {variable: TQV, collection: merra2_slv, spatial_func: max,
+       temporal_reducer: max, mask: ais, anomaly: true}
+
+    # --- vIVT (VFLXQV is southward-negative; negate) ---
+    # mean_of_ratios matches the reference compute_average estimator
+    # (per-timestep area-weighted ratio, unweighted mean over timesteps).
+    avg_vIVT_ais:
+      {variable: VFLXQV, collection: merra2_flx, spatial_func: weighted_mean,
+       temporal_reducer: mean_of_ratios, mask: ais, negate: true}
+    max_vIVT_ais:
+      {variable: VFLXQV, collection: merra2_flx, spatial_func: max,
+       temporal_reducer: max, mask: ais, negate: true}
+    max_vIVT:
+      {variable: VFLXQV, collection: merra2_flx, spatial_func: max,
+       temporal_reducer: max, mask: full, negate: true}
+
+    # --- captures at the first landfall timestep ---
+    min_SLP:
+      {variable: SLP, collection: merra2_slv, spatial_func: min,
+       temporal_reducer: first_landfall, mask: ocean, trigger: first_landfall}
+    max_SLP_gradient:
+      {variable: SLP, collection: merra2_slv, spatial_func: max_gradient,
+       temporal_reducer: first_landfall, mask: ocean, trigger: first_landfall}
+    max_landfalling_v850hPa:
+      {variable: V850, collection: merra2_v850, spatial_func: max,
+       temporal_reducer: first_landfall, mask: ocean, negate: true,
+       trigger: first_landfall}
+    avg_landfalling_v850hPa:
+      {variable: V850, collection: merra2_v850, spatial_func: weighted_mean,
+       temporal_reducer: first_landfall, mask: ocean, negate: true,
+       trigger: first_landfall}
+    avg_landfalling_minomega:
+      {variable: OMEGA, collection: merra2_omega, spatial_func: min_over_levels,
+       temporal_reducer: first_landfall, mask: ais, trigger: first_landfall}
+
+output:
+  format: parquet
+  store: ./output/zagg/ar_attributes.parquet

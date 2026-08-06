@@ -1,0 +1,39 @@
+# AR cumulative precipitation on the zagg temporal pipeline (englacial/zagg#213).
+#
+# Runs under the 24-HOUR AUGMENTED storm masks (rain falling up to a day after
+# the AR footprint leaves a cell is still attributed to the storm), i.e. a
+# separate event set from ar_attributes.yaml: pass the augmented events
+# (events_for_zagg(..., augmented=True) / local_event_tuples(..., augmented=True))
+# and join the two outputs on event_key.
+pipeline:
+  type: temporal
+
+data_source:
+  reader: xarray_s3
+  credentials_provider: gesdisc
+  collections:
+    merra2_precip:                 # M2T1NXINT: hourly rates, half-hour stamps
+      doi: "10.5067/Q5GVUVUIVGO7"
+      coord_round: 5   # MERRA-2 coord arrays carry float dirt (zagg issue 229)
+      variables: [PRECCU, PRECLS, PRECSN]
+      time_offset: "-30min"
+      # kg m-2 s-1 rates -> 3-hourly totals on the mask's time grid
+      resample: {freq: "3h", how: sum, scale: 3600}
+      derived:
+        rainfall: "PRECCU + PRECLS"
+  static_data:
+    ais_mask: ../antarctic_AR_catalogs/static/ais_mask.nc
+    cell_areas: ../antarctic_AR_catalogs/static/cell_areas.nc
+
+aggregation:
+  variables:
+    cumulative_rainfall_ais:
+      {variable: rainfall, collection: merra2_precip, spatial_func: weighted_sum,
+       temporal_reducer: sum, mask: ais}
+    cumulative_snowfall_ais:
+      {variable: PRECSN, collection: merra2_precip, spatial_func: weighted_sum,
+       temporal_reducer: sum, mask: ais}
+
+output:
+  format: parquet
+  store: ./output/zagg/ar_precip.parquet
