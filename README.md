@@ -1,6 +1,6 @@
 [![test artools](https://github.com/jbbutler/antarctic_AR_dataset/actions/workflows/test.yml/badge.svg)](https://github.com/jbbutler/antarctic_AR_dataset/actions/workflows/test.yml)
 
-# Reproducible Workflows to Construct Event-Based Datasets of Geophysical Phenomena from Threshold-Based Products: an Illustration with Antarctic Atmospheric Rivers
+# Constructing Event-Based Datasets of Geophysical Phenomena from Gridded Products: An Application to Antarctic Atmospheric Rivers
 
 Welcome! This repository contains all of the source code, routines, and notebooks used in the associated paper. To learn more about this work, feel free to check out the paper, or take a look at [the project website](https://jbbutler.github.io/antarctic_AR_dataset/), which contains a set of web-rendered notebooks with project code and output.
 
