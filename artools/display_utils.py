@@ -1,3 +1,11 @@
+'''
+Module with functions that aid in the display of the AR catalogs, from constructing thumbnails
+to plotting steographic projections of Antarctica.
+
+Jimmy Butler
+November 2025
+'''
+
 import xarray as xr
 import pandas as pd
 import numpy as np
@@ -9,9 +17,12 @@ import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 from cartopy.util import add_cyclic_point
 
+import matplotlib.patheffects as pe
+
 from matplotlib import animation
 import matplotlib
 from matplotlib.cm import prism
+
 from tqdm.auto import tqdm
 
 from io import BytesIO
@@ -45,12 +56,6 @@ def construct_thumbnail(storm):
 
     return imgstr
 
-
-import matplotlib.pyplot as plt
-from io import BytesIO
-import base64
-import pandas as pd
-
 def construct_trajectory_thumbnail(traj_df):
     '''
     Make a thumbnail image for a storm's trajectory.
@@ -82,11 +87,21 @@ def construct_trajectory_thumbnail(traj_df):
 
     return imgstr
 
-
 def display_catalog(catalog_df, nrows=None):
     '''
     Render the catalog as a standard pd.DataFrame, but show the data_array 
-    and trajectory columns as thumbnails.
+    and trajectory of each AR as user-friendly thumbnails. Behaves as pd.DataFrame.head().
+    By default, pandas seeks to print a string representation of each AR's xarray.DataArray,
+    which can be very slow to print. This function allows for AR DataFrames to be printed
+    in a much more readable manner.
+
+    Inputs:
+        catalog_df (pandas.DataFrame): a DataFrame with a data_array column consisting of binary-valued DataArrays
+            for each AR
+        nrows (int): optionally, how many rows of the DataFrame to display
+        
+    Outputs:
+        df_to_display (pandas.DataFrame): a more user friendly DataFrame
     '''
     # create a dictionary of formatters
     formatters = {'data_array': construct_thumbnail}
@@ -107,16 +122,19 @@ def format_polar_axis(ax):
     Helper function with all of the routines to generate a stereographic projection of Antarctica.
 
     Inputs:
-        ax (matplotlib.axes.Axes): the axis on which you wish to plot the map of Antarctica
+        ax (cartopy.GeoAxes): a GeoAxes map object to draw Antarctica on, modified in-place
     '''
     ax.set_extent([-180, 180, -90, -39], ccrs.PlateCarree())
-    ice_shelf_poly = cfeature.NaturalEarthFeature('physical', 'antarctic_ice_shelves_polys', '50m', edgecolor='none', facecolor='lightcyan')
+    # add ice shelf lines and polygons, coastlines
+    ice_shelf_poly = cfeature.NaturalEarthFeature('physical', 'antarctic_ice_shelves_polys', 
+                                                  '50m', edgecolor='none', facecolor='lightcyan')
     ax.add_feature(ice_shelf_poly, linewidth=3)
-    ice_shelf_line = cfeature.NaturalEarthFeature('physical', 'antarctic_ice_shelves_lines', '50m', edgecolor='black', facecolor='none')
+    ice_shelf_line = cfeature.NaturalEarthFeature('physical', 'antarctic_ice_shelves_lines', 
+                                                  '50m', edgecolor='black', facecolor='none')
     ax.add_feature(ice_shelf_line, linewidth=1, zorder=13)
     ax.coastlines(resolution='110m', linewidth=1, zorder=32)
 
-    # Map extent 
+    # add grid lines
     theta = np.linspace(0, 2*np.pi, 100)
     center, radius = [0.5, 0.5], 0.5
     verts = np.vstack([np.sin(theta), np.cos(theta)]).T
@@ -124,82 +142,105 @@ def format_polar_axis(ax):
     ax.set_boundary(circle, transform=ax.transAxes)
     ax.gridlines(alpha=0.5, zorder=33)
 
-
 def plot_stormtime_frame(ax, time_pt, stormtime_df, color_mapping=None):
     '''
-    Plot all labelled ARs present at a particular time.
+    Plot all of the ARs present around Antarctica at a particular time slice. If time slice
+    is not in the DataFrame of AR times, a blank map of Antarctica is returned.
 
     Inputs:
-        ax (matplotlib.axes.Axes): the axis on which to plot the ARs at a particular time
-        time_pt (pd.DatetimeIndex): the time
-        stormtime_df (pd.DataFrame): a dataframe in stormtime format (each row is an AR at a particular time)
-        color_mapping (dict): a dictionary mapping AR labels to colors
+        ax (cartopy.GeoAxes): the axis on which to plot the ARs and Antarctica (modified in-place)
+        time_pt (datetime64[ns]): the time slice to plot
+        stormtime_df (pd.DataFrame): a DataFrame where each row corresponds to an AR at a
+            particular point in time. Contains columns with lists of latitudes and longitudes
+            of each AR time.
+        color_mapping (dict): mapping from cluster/AR number to color, used for plotting
     '''
-    # auto-generate color mapping if not provided (useful for standalone plotting)
     if color_mapping is None:
-        unique_clusters = stormtime_df['label'].unique()
-        prism_cmap = plt.get_cmap('prism')
-        color_mapping = {unique_clusters[j]: prism_cmap(j/len(unique_clusters)) for j in range(len(unique_clusters))}
-
+        ar_colors = ['#1f77b4', '#d62728', '#2ca02c', '#9467bd',
+                     '#8c564b', '#c51b8a', '#7f7f7f', '#1b9e77']
+        unique_clusters = list(dict.fromkeys(stormtime_df['label']))
+        color_mapping = {unique_clusters[j]: ar_colors[j % len(ar_colors)]
+                         for j in range(len(unique_clusters))}
     if (time_pt == stormtime_df.time).any():
         dat = stormtime_df[stormtime_df['time'] == time_pt]
         n_clusts = dat.shape[0]
-
         for i in range(n_clusts):
-            cluster = dat['label'].iloc[i]
-            ax.scatter(dat['lon'].iloc[i], dat['lat'].iloc[i], transform=ccrs.PlateCarree(), 
-                       s=1, color=color_mapping[cluster], label=str(cluster), zorder=30)
-        
-        # deduplicate the legend so you don't get a key for every single point
-        handles, labels = ax.get_legend_handles_labels()
-        by_label = dict(zip(labels, handles))
-        if by_label:
-            ax.legend(by_label.values(), by_label.keys())
+            cluster = int(dat['label'].iloc[i])
+            lon = np.asarray(dat['lon'].iloc[i])
+            lat = np.asarray(dat['lat'].iloc[i])
+            ax.scatter(lon, lat, transform=ccrs.PlateCarree(),
+                       s=1, color=color_mapping[cluster], zorder=30)
+            # in-image label at the AR centroid (replaces the legend so the
+            # label follows each AR around the grid)
+            # a little lon shift so it doesn't overlay all the points
+            # compute averages
+            lon = np.radians(lon)
+            lat = np.radians(lat)
+            x = np.cos(lat)*np.cos(lon)
+            y = np.cos(lat)*np.sin(lon)
+            z = np.sin(lat)
 
+            avg_x = np.mean(x)
+            avg_y = np.mean(y)
+            avg_z = np.mean(z)
+
+            avg_lat = np.degrees(np.arcsin(avg_z))
+            avg_lon = np.degrees(np.atan2(avg_y, avg_x))
+            
+            txt = ax.text(avg_lon+10, avg_lat+10, str(cluster),
+                          transform=ccrs.PlateCarree(), fontsize=8,
+                          fontweight='bold', ha='center', va='center',
+                          color='black',
+                          bbox=dict(boxstyle='round,pad=0.2', facecolor='white',
+                                    edgecolor='0.3', linewidth=0.6),
+                          zorder=100)
+            txt.set_path_effects([pe.Stroke(linewidth=1.8, foreground='white'),
+                                  pe.Normal()])
     format_polar_axis(ax)
     time_ts = pd.Timestamp(time_pt)
     ax.set_title(f'{time_ts.month}/{time_ts.day}/{time_ts.year}, {time_ts.hour}:00')
 
-def plot_stormtime_grid(start_time, end_time, stormtime_df, freq, ncols):
-    '''
-    Plots side-by-side frames of storm events every 6 hours within a time window.
 
+def plot_stormtime_grid(start_time, end_time, stormtime_df, freq, ncols, figsize=(6,6)):
+    '''
+    Plots side-by-side frames of storm events at a specified frequency within a specified time window.
+    
     Inputs:
-        start_time (str or pd.Timestamp): The beginning of your event (e.g., '2005-01-01 00:00')
-        end_time (str or pd.Timestamp): The end of your event (e.g., '2005-01-02 12:00')
-        stormtime_df (pd.DataFrame): dataframe in stormtime format
+        start_time (str or pd.Timestamp): The beginning of your event (for example, '2005-01-01 00:00')
+        end_time (str or pd.Timestamp): The end of your event (for example, '2005-01-02 12:00')
+        stormtime_df (pd.DataFrame): dataframe in stormtime format (see plot_stormtime_frame)
         freq (str): the frequency at which to plot frames
         ncols (int): number of columns in the subplot grid
+
+    Outputs:
+        fig (matplotlib.figure.Figure), axes (cartopy.mpl.geoaxes.GeoAxes)
     '''
     times_to_plot = pd.date_range(start=start_time, end=end_time, freq=freq)
-    
+
     n_frames = len(times_to_plot)
     nrows = int(np.ceil(n_frames / ncols))
-    
-    # generate a consistent color mapping for all subplots so a cluster keeps the same color
-    unique_clusters = stormtime_df['label'].unique()
-    prism_cmap = plt.get_cmap('prism')
-    color_mapping = {unique_clusters[j]: prism_cmap(j/len(unique_clusters)) 
+
+    # generate a consistent color mapping
+    ar_colors = ['#1f77b4', '#d62728', '#2ca02c', '#9467bd',
+                 '#8c564b', '#c51b8a', '#7f7f7f', '#1b9e77']
+    unique_clusters = list(dict.fromkeys(stormtime_df['label']))
+    color_mapping = {unique_clusters[j]: ar_colors[j % len(ar_colors)]
                      for j in range(len(unique_clusters))}
 
     # create the figure and axes grid with the stereographic projection
-    fig, axes = plt.subplots(
-        nrows, ncols, 
-        figsize=(5*ncols, 5*nrows),
-        subplot_kw=dict(projection=ccrs.Stereographic(central_longitude=0., central_latitude=-90.))
-    )
-    
+    fig, axes = plt.subplots(nrows, ncols, figsize=(figsize[0], figsize[1]),
+        subplot_kw=dict(projection=ccrs.Stereographic(central_longitude=0., central_latitude=-90.)))
+
     # flatten axes for easy iteration
     axes_flat = axes.flatten() if n_frames > 1 else [axes]
-
     # plot each time point
     for i, time_pt in enumerate(times_to_plot):
         plot_stormtime_frame(axes_flat[i], time_pt, stormtime_df, color_mapping=color_mapping)
-    
-    # hide any unused axes in the grid (e.g., if you have 5 plots in a 3x2 grid)
+
+    # hide any unused axes in the grid
     for j in range(i + 1, len(axes_flat)):
         axes_flat[j].axis('off')
-        
+
     fig.tight_layout()
     return fig, axes
 
@@ -207,10 +248,10 @@ def plot_stormtime_grid(start_time, end_time, stormtime_df, freq, ncols):
 def plot_eulerian_frame(ax, time_pt, data_array):
     '''
     Plot unlabelled AR pixels at a particular point in time. Used to plot
-        AR pixels from the Wille et al. 2021 vIVT threshold catalog.
+    AR pixels from the Wille et al. 2021 vIVT threshold catalog.
 
     Inputs: 
-        ax (matplotlib.axes.Axes): the axis object to generate the plot on
+        ax (matplotlib.axes.Axes): the axis object to generate the plot on (modified in-place)
         time_pt (np.datetime64): the time to plot
         data_array (xarray.DataArray): the binary valued DataArray
     '''
@@ -234,6 +275,7 @@ def plot_eulerian_frame(ax, time_pt, data_array):
 def make_movie(stormtime_df, title, save_path):
     '''
     Create and save an animation showing labelled ARs from the storm catalog.
+    Can save as either mp4 or gif.
 
     Inputs:
         stormtime_df (pd.DataFrame): the DataFrame of storms to plot, in stormtime format
@@ -277,6 +319,7 @@ def make_movie(stormtime_df, title, save_path):
 def make_eulerian_movie(data_array, title, save_path):
     '''
     Create and save an animation showing the AR pixels from an eulerian pixelwise threshold catalog.
+    Can save as either mp4 or gif.
 
     Inputs:
         data_array (xarray.DataArray): the binary valued dataarray indicating AR pixels
